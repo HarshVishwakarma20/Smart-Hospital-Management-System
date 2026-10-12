@@ -5,8 +5,8 @@ import prisma from '../config/db';
 const bookSchema = z.object({
   doctorId: z.string().uuid(),
   patientId: z.string().uuid().optional(), // Provided by receptionist
-  date: z.string(), // YYYY-MM-DD
-  startTime: z.string(), // HH:MM
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'startTime must be in HH:MM format'),
 });
 
 export const bookAppointment = async (req: Request, res: Response) => {
@@ -22,19 +22,23 @@ export const bookAppointment = async (req: Request, res: Response) => {
       return res.status(403).json({ message: 'Only patients and receptionists can book appointments' });
     }
 
-    const targetDate = new Date(body.date);
-    const now = new Date();
-    
-    if (targetDate < new Date(now.setHours(0,0,0,0))) {
+    const targetDate = new Date(body.date + 'T00:00:00.000Z');
+    if (isNaN(targetDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (body.date < todayStr) {
       return res.status(400).json({ message: 'Cannot book an appointment in the past' });
     }
 
-    if (now.toDateString() === targetDate.toDateString()) {
+    if (body.date === todayStr) {
+      const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
       const currentTime = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
       if (body.startTime <= currentTime) {
-         return res.status(400).json({ message: 'Cannot book an appointment in the past' });
+        return res.status(400).json({ message: 'Cannot book an appointment in the past' });
       }
     }
 
@@ -147,6 +151,12 @@ export const cancelAppointment = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { id } = req.params;
+
+    const idSchema = z.string().uuid();
+    const parseId = idSchema.safeParse(id);
+    if (!parseId.success) {
+      return res.status(400).json({ message: 'Invalid appointment ID format' });
+    }
 
     const appointment = await prisma.appointment.findUnique({ where: { id } });
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });

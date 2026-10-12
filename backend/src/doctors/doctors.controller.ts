@@ -23,8 +23,8 @@ export const getDoctorAvailability = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { date } = req.query; // Expecting YYYY-MM-DD
 
-    if (!date || typeof date !== 'string') {
-      return res.status(400).json({ message: 'Date parameter (YYYY-MM-DD) is required' });
+    if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: 'Valid date parameter (YYYY-MM-DD) is required' });
     }
 
     const doctor = await prisma.user.findUnique({
@@ -35,7 +35,10 @@ export const getDoctorAvailability = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Doctor not found' });
     }
 
-    const targetDate = new Date(date);
+    const targetDate = new Date(date + 'T00:00:00.000Z');
+    if (isNaN(targetDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid date parameter' });
+    }
     
     // Get base availability for that date
     const availabilities = await prisma.doctorAvailability.findMany({
@@ -73,13 +76,15 @@ export const getDoctorAvailability = async (req: Request, res: Response) => {
       endTime: a.endTime,
     }));
 
-    if (now.toDateString() === targetDate.toDateString()) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (date === todayStr) {
+      const now = new Date();
       const currentHours = now.getHours();
       const currentMinutes = now.getMinutes();
       const currentTime = `${currentHours.toString().padStart(2, '0')}:${currentMinutes.toString().padStart(2, '0')}`;
       finalSlots = finalSlots.filter(s => s.startTime > currentTime);
-    } else if (targetDate < new Date(now.setHours(0,0,0,0))) {
-       finalSlots = [];
+    } else if (date < todayStr) {
+      finalSlots = [];
     }
 
     res.json(finalSlots);
