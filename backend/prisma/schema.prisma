@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  RECEPTIONIST
+  ADMIN
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  availabilities DoctorAvailability[]
+  appointmentsAsPatient Appointment[] @relation("PatientAppointments")
+  appointmentsAsDoctor  Appointment[] @relation("DoctorAppointments")
+}
+
+model DoctorAvailability {
+  id        String   @id @default(uuid())
+  doctorId  String
+  date      DateTime @db.Date
+  startTime String   // Format: "HH:MM" (e.g., "09:00")
+  endTime   String   // Format: "HH:MM" (e.g., "17:00")
+  createdAt DateTime @default(now())
+
+  doctor    User     @relation(fields: [doctorId], references: [id])
+
+  @@unique([doctorId, date, startTime])
+}
+
+model Appointment {
+  id        String            @id @default(uuid())
+  patientId String
+  doctorId  String
+  date      DateTime          @db.Date
+  startTime String            // Format: "HH:MM"
+  endTime   String            // Format: "HH:MM"
+  status    AppointmentStatus @default(BOOKED)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  patient   User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor    User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+
+  // Protect against concurrent bookings for the same doctor at the same time
+  // If an appointment is cancelled, we still keep it in DB but maybe we shouldn't rely solely on this unique constraint if we want to reuse the slot.
+  // We can enforce no-double-booking via a composite unique index on doctorId, date, startTime, IF status is BOOKED. 
+  // Wait, Prisma doesn't support conditional unique constraints natively across all DBs, but Postgres supports partial indexes.
+  // For simplicity, we will handle double booking protection in the application logic using transactions.
+}

@@ -1,106 +1,135 @@
-# Smart Hospital Management System (SHMS)
+# Smart Hospital Management System (SHMS) - Academic Prototype
 
-## Overview
+This project is a functional, well-structured academic prototype of a Smart Hospital Management System. It implements a core subset of the features defined in the SRS (Module 1: Authentication & RBAC, Module 2: Appointment & Scheduling).
 
-The Smart Hospital Management System (SHMS) is a web-based application prototype designed to simplify hospital operations by providing secure access to hospital services and managing patient appointments.
+## 🚀 Implemented Modules
 
-The system follows a three-tier architecture consisting of a presentation layer, an application layer, and a database layer.
+### Module 1: Authentication and Role-Based Access Control (RBAC)
+- Secure JWT-based authentication.
+- Passwords hashed via `bcrypt`.
+- Role-specific dashboards (Patient, Doctor, Receptionist, Admin).
+- Protected API routes enforcing role validation.
+- Endpoints: `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
 
-## Project Scope
+### Module 2: Appointment and Scheduling
+- Display available doctors.
+- Fetch and view doctor availability slots for a given date.
+- Book appointments (Patient self-booking, Receptionist assisted booking).
+- Cancellation with access checks.
+- Dashboards for viewing own/assigned appointments.
+- Endpoints: `GET /api/doctors`, `GET /api/doctors/:id/availability`, `GET /api/appointments`, `POST /api/appointments`, `PUT /api/appointments/:id/cancel`.
 
-This prototype focuses on implementing and testing two core modules:
+## 🛠️ Technology Stack
+- **Frontend**: React, TypeScript, Vite, React Router, Tailwind CSS, Axios, Lucide React (Icons).
+- **Backend**: Node.js, Express, TypeScript, Prisma ORM, PostgreSQL, Zod, JWT, bcrypt.
 
-1. **Authentication and Role-Based Access Control (RBAC)** — provides user login, secure authentication, and access to features based on user roles.
-2. **Appointment and Scheduling** — allows users to view doctors, check availability, book appointments, view scheduled appointments, and cancel bookings.
-
-Other modules described in the broader hospital management system requirements are outside the scope of this prototype.
-
-## User Roles
-
-The prototype is planned to support the following roles:
-
-* **Patient:** View available doctors, book appointments, and manage personal appointments.
-* **Doctor:** View appointments and manage availability.
-* **Receptionist:** Assist patients with appointment booking.
-* **Administrator:** Manage users and access administrative functions.
-
-## Planned Technology Stack
-
-| Component        | Technology                   |
-| ---------------- | ---------------------------- |
-| Frontend         | React with TypeScript        |
-| Styling          | Tailwind CSS                 |
-| Backend          | Node.js and Express          |
-| Database         | PostgreSQL                   |
-| ORM              | Prisma                       |
-| Authentication   | JSON Web Tokens (JWT)        |
-| Password Hashing | bcrypt                       |
-| Validation       | Zod                          |
-| Testing          | Jest, Supertest, and Postman |
-| Version Control  | Git and GitHub               |
-
-## Key Features
-
-### Authentication and RBAC
-
-* User login and authentication.
-* Password hashing.
-* Role-based authorization.
-* Protected routes and endpoints.
-* Appropriate responses for unauthorized access.
-
-### Appointment and Scheduling
-
-* View available doctors.
-* Check doctor availability.
-* Book appointments.
-* View scheduled appointments.
-* Cancel appointments.
-* Prevent duplicate bookings for the same doctor and time slot.
-
-## Testing Plan
-
-The implemented modules will be tested through:
-
-* Unit testing of authentication, authorization, and appointment logic.
-* API testing of login, doctor availability, and appointment endpoints.
-* Integration testing of the appointment booking workflow.
-* Negative testing for invalid credentials, unauthorized access, and double booking.
-
-## Project Structure
-
-The planned project structure is:
-
-```text
-SmartHospitalManagementSystem/
-├── frontend/
-├── backend/
-│   ├── src/
-│   │   ├── auth/
-│   │   ├── appointments/
-│   │   └── doctors/
-│   ├── prisma/
-│   └── tests/
-├── .gitignore
-└── README.md
+## 📂 Repository Structure
+```
+Smart-Hospital-Management-System/
+├── doc/
+│   └── 2024300269_SRS_EXP1_D3.pdf
+├── frontend/ (React UI)
+│   ├── src/ (pages, components, layouts, context, services)
+│   ├── tailwind.config.js
+│   ├── .env.example
+│   └── package.json
+├── backend/ (Express API)
+│   ├── src/ (auth, appointments, doctors, users, middleware, config)
+│   ├── prisma/ (schema.prisma, seed.ts)
+│   ├── .env.example
+│   └── package.json
+├── README.md
+└── .gitignore
 ```
 
-The structure may evolve during implementation.
+## ⚙️ Prerequisites
+- Node.js (v18+)
+- PostgreSQL installed and running locally.
+- A running PostgreSQL database (default assumed connection string: `postgresql://postgres:postgres@localhost:5432/shms?schema=public`).
 
-## Getting Started
+If you do not have PostgreSQL installed, download it from [PostgreSQL Official Website](https://www.postgresql.org/download/). On Windows, ensure the service is running and you have created a database named `shms`.
 
-Setup and execution instructions will be added as the frontend, backend, and database are implemented.
+## 🛠️ Dependency Installation & Setup
 
-## Project Status
+1. **Install Backend Dependencies**
+   ```bash
+   cd backend
+   npm install
+   ```
 
-**Status:** In development.
+2. **Install Frontend Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-This project is an academic prototype. The planned features and technologies may be adjusted during implementation and testing.
+## 🔒 Environment Variable Setup
 
-## Contributors
+Copy the `.env.example` templates to `.env` in both folders.
 
-Add the names of the project team members here.
+**Backend (`backend/.env`)**
+```env
+PORT=5000
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shms?schema=public"
+JWT_SECRET="super-secret-jwt-key-replace-in-production"
+JWT_EXPIRES_IN="1d"
+FRONTEND_URL="http://localhost:5173"
+```
+*Make sure to change `DATABASE_URL` credentials if your local PostgreSQL uses a different user/password.*
 
-## License
+**Frontend (`frontend/.env`)**
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
-Add the selected project license here.
+## 🗄️ PostgreSQL Configuration, Migration & Seeding
+
+Ensure your PostgreSQL instance is running and the database matches your `DATABASE_URL`.
+```bash
+cd backend
+# 1. Generate Prisma Client
+npx prisma generate
+
+# 2. Run Database Migrations
+npx prisma migrate dev --name init
+
+# 3. Seed Sample Data
+npm run prisma:seed
+```
+
+### 🧑‍💻 Development-only Sample Credentials
+After seeding, you can log in using these accounts (password for all is `password123`):
+- **Patient**: `patient1@shms.local` / `patient2@shms.local`
+- **Doctor**: `doctor1@shms.local` / `doctor2@shms.local`
+- **Receptionist**: `receptionist@shms.local`
+- **Admin**: `admin@shms.local`
+
+## ▶️ Starting the Application
+
+**Start the Backend (API Server)**
+```bash
+cd backend
+npm run dev
+```
+
+**Start the Frontend (UI)**
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend will be available at [http://localhost:5173](http://localhost:5173).
+
+## ⚠️ Known Limitations
+- Stateless JWT is used. Real token invalidation (logout) relies on client-side token deletion.
+- Advanced EHR, Pharmacy, Billing, and Bed/Ward management are intentionally not implemented as per the academic prototype scope.
+- Double-booking prevention uses sequential transaction checks; an advanced real-world system might use stronger database-level locks (e.g. `SELECT ... FOR UPDATE`).
+- Notification services (Email/SMS) are mocked/omitted.
+
+## ✅ Testing Commands for the Next Phase
+The test suite scaffolding has been set up with Jest and Supertest in the backend. When you are ready for the formal testing phase, use:
+```bash
+cd backend
+npm run test
+```
+*(Note: Complete tests should be implemented in the testing phase)*
