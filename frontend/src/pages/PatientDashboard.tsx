@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Calendar, Clock, User, XCircle } from 'lucide-react';
+import { Calendar, Clock, User, XCircle, FileText, ChevronRight, Stethoscope } from 'lucide-react';
 
 interface Doctor {
   id: string;
@@ -23,9 +24,20 @@ interface Slot {
   endTime: string;
 }
 
+interface MedicalRecordSummary {
+  id: string;
+  recordDate: string;
+  diagnosis: string;
+  symptoms: string;
+  doctor?: {
+    name: string;
+  };
+}
+
 const PatientDashboard = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [records, setRecords] = useState<MedicalRecordSummary[]>([]);
   
   const [selectedDoctor, setSelectedDoctor] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -38,7 +50,17 @@ const PatientDashboard = () => {
   useEffect(() => {
     fetchDoctors();
     fetchAppointments();
+    fetchMedicalRecords();
   }, []);
+
+  const fetchMedicalRecords = async () => {
+    try {
+      const res = await api.get('/medical-records');
+      setRecords(res.data.slice(0, 3));
+    } catch (e) {
+      console.error('Failed to load recent medical records:', e);
+    }
+  };
 
   const fetchDoctors = async () => {
     try {
@@ -226,6 +248,48 @@ const PatientDashboard = () => {
           )}
         </div>
 
+      </div>
+
+      {/* Recent Medical Records (EHR) Section */}
+      <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <FileText className="text-blue-600" /> My Medical Records (EHR)
+          </h2>
+          <Link
+            to="/medical-records"
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+          >
+            View Complete History <ChevronRight size={16} />
+          </Link>
+        </div>
+
+        {records.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {records.map((rec) => (
+              <Link
+                key={rec.id}
+                to={`/medical-records/${rec.id}`}
+                className="block p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-sm transition bg-gray-50"
+              >
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                  <Calendar size={12} /> {new Date(rec.recordDate).toLocaleDateString()}
+                  {rec.doctor && <span>• Dr. {rec.doctor.name}</span>}
+                </div>
+                <h4 className="font-semibold text-gray-900 text-base mb-1 truncate">{rec.diagnosis}</h4>
+                <p className="text-xs text-gray-600 line-clamp-2">{rec.symptoms}</p>
+                <span className="text-xs text-blue-600 font-medium inline-flex items-center gap-1 mt-2">
+                  View Consultation Details <ChevronRight size={12} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 text-gray-500 text-sm">
+            <Stethoscope className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+            No clinical records logged yet. Records authored during doctor consultations will appear here.
+          </div>
+        )}
       </div>
     </div>
   );

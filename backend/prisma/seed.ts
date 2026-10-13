@@ -120,6 +120,97 @@ async function main() {
     }
   }
 
+  console.log('Seeding demo appointments and medical records...');
+  const pastDate1 = new Date();
+  pastDate1.setDate(pastDate1.getDate() - 3);
+  pastDate1.setHours(0, 0, 0, 0);
+
+  const pastDate2 = new Date();
+  pastDate2.setDate(pastDate2.getDate() - 1);
+  pastDate2.setHours(0, 0, 0, 0);
+
+  const futureFollowUp = new Date();
+  futureFollowUp.setDate(futureFollowUp.getDate() + 7);
+  futureFollowUp.setHours(0, 0, 0, 0);
+
+  // Demo Appointment 1: Doctor Alice with Patient John
+  const demoApp1Id = '00000000-0000-4000-8000-000000000001';
+  await prisma.appointment.upsert({
+    where: { id: demoApp1Id },
+    update: {
+      startTime: '15:00',
+      endTime: '15:30',
+    },
+    create: {
+      id: demoApp1Id,
+      patientId: p1.id,
+      doctorId: d1.id,
+      date: pastDate1,
+      startTime: '15:00',
+      endTime: '15:30',
+      status: 'COMPLETED',
+    },
+  });
+
+  // Demo Medical Record 1: Dr. Alice Brown -> John Doe
+  const demoRec1Id = '00000000-0000-4000-8000-000000000002';
+  await prisma.medicalRecord.upsert({
+    where: { id: demoRec1Id },
+    update: {},
+    create: {
+      id: demoRec1Id,
+      patientId: p1.id,
+      doctorId: d1.id,
+      appointmentId: demoApp1Id,
+      recordDate: pastDate1,
+      symptoms: 'Persistent dry cough, mild sore throat, and low-grade fever for 4 days.',
+      diagnosis: 'Acute Upper Respiratory Tract Infection (URTI)',
+      treatmentNotes: 'Patient advised warm fluid intake, salt-water gargles 3x daily, and adequate hydration.',
+      prescription: 'Tab. Paracetamol 650mg TDS PRN, Tab. Cetirizine 10mg OD HS for 5 days.',
+      followUpDate: futureFollowUp,
+      isArchived: false,
+    },
+  });
+
+  // Demo Appointment 2: Doctor Robert with Patient Jane
+  const demoApp2Id = '00000000-0000-4000-8000-000000000003';
+  await prisma.appointment.upsert({
+    where: { id: demoApp2Id },
+    update: {
+      startTime: '15:30',
+      endTime: '16:00',
+    },
+    create: {
+      id: demoApp2Id,
+      patientId: p2.id,
+      doctorId: d2.id,
+      date: pastDate2,
+      startTime: '15:30',
+      endTime: '16:00',
+      status: 'COMPLETED',
+    },
+  });
+
+  // Demo Medical Record 2: Dr. Robert Clark -> Jane Smith
+  const demoRec2Id = '00000000-0000-4000-8000-000000000004';
+  await prisma.medicalRecord.upsert({
+    where: { id: demoRec2Id },
+    update: {},
+    create: {
+      id: demoRec2Id,
+      patientId: p2.id,
+      doctorId: d2.id,
+      appointmentId: demoApp2Id,
+      recordDate: pastDate2,
+      symptoms: 'Mild epigastric pain and dyspepsia after meals, aggravated by spicy food.',
+      diagnosis: 'Mild Gastritis',
+      treatmentNotes: 'Dietary counselling provided: avoid trigger foods and late dinners.',
+      prescription: 'Cap. Pantoprazole 40mg OD before breakfast for 14 days, Antacid gel 10ml TDS post-meal.',
+      followUpDate: null,
+      isArchived: false,
+    },
+  });
+
   console.log('Seed completed successfully!');
 }
 
