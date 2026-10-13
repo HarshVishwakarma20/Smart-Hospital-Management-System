@@ -30,6 +30,7 @@ async function main() {
       role: 'PATIENT',
     },
   });
+  
 
   const d1 = await prisma.user.upsert({
     where: { email: 'doctor1@shms.local' },
