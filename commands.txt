@@ -1,0 +1,15 @@
+cd C:\Users\harsh\SmartHospitalManagementSystem\Smart-Hospital-Management-System\backend
+npm test
+npm run build
+
+
+cd C:\Users\harsh\SmartHospitalManagementSystem\Smart-Hospital-Management-System\frontend
+npm run build
+
+
+cd C:\Users\harsh\SmartHospitalManagementSystem\Smart-Hospital-Management-System\backend
+npm run dev
+
+
+cd C:\Users\harsh\SmartHospitalManagementSystem\Smart-Hospital-Management-System\frontend
+npm run dev

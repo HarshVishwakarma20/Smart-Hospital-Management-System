@@ -167,7 +167,9 @@ describe('Module 1: Authentication and RBAC Integration Tests', () => {
   test("12. A patient attempts to view or cancel another patient's appointment: access is denied", async () => {
     // Find or create an appointment for patient 2
     // First, let's create a future date appointment for patient 2
-    const targetDate = '2026-10-18';
+    const futureDateObj = new Date();
+    futureDateObj.setDate(futureDateObj.getDate() + 14);
+    const targetDate = futureDateObj.toISOString().split('T')[0];
     const startTime = '09:00';
 
     // Ensure slot availability exists
@@ -231,7 +233,9 @@ describe('Module 1: Authentication and RBAC Integration Tests', () => {
 
   test('13. A doctor cannot access or modify appointments outside their assignment', async () => {
     // Target appointment is assigned to doctor 1 (created in previous test)
-    const targetDate = '2026-10-18';
+    const futureDateObj = new Date();
+    futureDateObj.setDate(futureDateObj.getDate() + 14);
+    const targetDate = futureDateObj.toISOString().split('T')[0];
     const appRecord = await prisma.appointment.findFirst({
       where: {
         doctorId: doctorId,

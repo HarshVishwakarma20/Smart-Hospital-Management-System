@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import { Calendar, Clock, User, XCircle, FileText, ChevronRight, Stethoscope } from 'lucide-react';
+import { Calendar, Clock, User, XCircle, FileText, ChevronRight, Stethoscope, CheckCircle2 } from 'lucide-react';
 
 interface Doctor {
   id: string;
@@ -12,6 +12,7 @@ interface Appointment {
   id: string;
   date: string;
   startTime: string;
+  endTime?: string;
   status: string;
   doctor: {
     name: string;
@@ -40,7 +41,11 @@ const PatientDashboard = () => {
   const [records, setRecords] = useState<MedicalRecordSummary[]>([]);
   
   const [selectedDoctor, setSelectedDoctor] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  });
   const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -66,6 +71,11 @@ const PatientDashboard = () => {
     try {
       const res = await api.get('/doctors');
       setDoctors(res.data);
+      // Auto-select first doctor if available to immediately show slots
+      if (res.data.length > 0 && !selectedDoctor) {
+        setSelectedDoctor(res.data[0].id);
+        fetchSlots(res.data[0].id, selectedDate);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -114,7 +124,7 @@ const PatientDashboard = () => {
         date: selectedDate,
         startTime: slot.startTime,
       });
-      setSuccess('Appointment booked successfully!');
+      setSuccess(`Appointment confirmed for ${slot.startTime} on ${selectedDate}!`);
       fetchAppointments();
       fetchSlots(selectedDoctor, selectedDate); // refresh slots
     } catch (e: any) {
@@ -137,23 +147,44 @@ const PatientDashboard = () => {
     }
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const formatDisplayDate = (dateStr: string) => {
+    const datePart = dateStr.split('T')[0];
+    const d = new Date(datePart + 'T00:00:00.000Z');
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Categorize appointments
+  const upcomingAppointments = appointments
+    .filter(a => a.status === 'BOOKED' && (a.date.split('T')[0] >= todayStr || new Date(a.date) >= new Date()))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.startTime.localeCompare(b.startTime));
+
+  const pastOrCancelledAppointments = appointments
+    .filter(a => !(a.status === 'BOOKED' && (a.date.split('T')[0] >= todayStr || new Date(a.date) >= new Date())))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Patient Dashboard</h1>
-        <p className="text-gray-500">Manage your appointments and bookings</p>
+        <p className="text-gray-500">Manage your consultation bookings, upcoming appointments, and medical history</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* Book Appointment Section */}
         <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Calendar className="text-blue-600" /> Book an Appointment
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <Calendar className="text-blue-600" /> Book an Appointment Ahead
           </h2>
           
-          {error && <div className="mb-4 text-red-600 text-sm bg-red-50 p-2 rounded">{error}</div>}
-          {success && <div className="mb-4 text-green-600 text-sm bg-green-50 p-2 rounded">{success}</div>}
+          {error && <div className="mb-4 text-red-600 text-sm bg-red-50 p-2.5 rounded-lg border border-red-200">{error}</div>}
+          {success && (
+            <div className="mb-4 text-green-700 text-sm bg-green-50 p-2.5 rounded-lg border border-green-200 flex items-center gap-1.5">
+              <CheckCircle2 size={16} /> {success}
+            </div>
+          )}
 
           <div className="space-y-4">
             <div>
@@ -171,34 +202,76 @@ const PatientDashboard = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Date</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Select Date Ahead</label>
+                <span className="text-xs text-gray-500">{formatDisplayDate(selectedDate)}</span>
+              </div>
               <input 
                 type="date"
-                min={new Date().toISOString().split('T')[0]}
+                min={todayStr}
                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
                 value={selectedDate}
                 onChange={(e) => handleDateChange(e.target.value)}
               />
+              {/* Quick Date Pills */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  { label: 'Today', offset: 0 },
+                  { label: 'Tomorrow', offset: 1 },
+                  { label: '+2 Days', offset: 2 },
+                  { label: '+3 Days', offset: 3 },
+                  { label: '+7 Days', offset: 7 },
+                  { label: '+14 Days', offset: 14 }
+                ].map(({ label, offset }) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + offset);
+                  const str = d.toISOString().split('T')[0];
+                  return (
+                    <button
+                      key={offset}
+                      type="button"
+                      onClick={() => handleDateChange(str)}
+                      className={`text-xs px-2.5 py-1 rounded-md border font-medium transition ${
+                        selectedDate === str
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {selectedDoctor && selectedDate && (
-              <div className="pt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Available Slots</label>
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-800">Available Slots Ahead</label>
+                  <span className="text-xs bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded">
+                    {availableSlots.length} slot{availableSlots.length !== 1 ? 's' : ''} available
+                  </span>
+                </div>
+
                 {availableSlots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 max-h-[220px] overflow-y-auto pr-1">
                     {availableSlots.map(slot => (
                       <button
                         key={slot.id}
+                        type="button"
                         onClick={() => handleBook(slot)}
                         disabled={bookingLoading}
-                        className="border border-blue-500 text-blue-700 bg-blue-50 hover:bg-blue-100 py-2 px-3 rounded text-sm font-medium disabled:opacity-50"
+                        className="border border-blue-400 text-blue-700 bg-blue-50 hover:bg-blue-100 hover:border-blue-500 py-2 px-2 rounded-lg text-xs font-semibold disabled:opacity-50 transition text-center shadow-sm"
                       >
-                        {slot.startTime}
+                        <div>{slot.startTime}</div>
+                        <div className="text-[10px] text-blue-500 font-normal">{slot.endTime}</div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded text-center">No available slots for this date.</p>
+                  <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded text-center">
+                    No available slots remaining for this date. Please pick another date above.
+                  </p>
                 )}
               </div>
             )}
@@ -207,44 +280,70 @@ const PatientDashboard = () => {
 
         {/* My Appointments Section */}
         <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Clock className="text-blue-600" /> My Appointments
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Clock className="text-blue-600" /> My Appointments
+            </h2>
+            <span className="text-xs bg-green-100 text-green-800 font-medium px-2.5 py-0.5 rounded-full">
+              {upcomingAppointments.length} upcoming
+            </span>
+          </div>
 
-          {appointments.length > 0 ? (
-            <div className="space-y-4">
-              {appointments.map(app => (
-                <div key={app.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center bg-gray-50">
+          {/* Upcoming Appointments List */}
+          {upcomingAppointments.length > 0 ? (
+            <div className="space-y-3 mb-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Upcoming Consultations</h3>
+              {upcomingAppointments.map(app => (
+                <div key={app.id} className="border-l-4 border-green-500 bg-gray-50 p-4 rounded shadow-sm flex justify-between items-center">
                   <div>
-                    <div className="font-semibold text-gray-800 flex items-center gap-2">
-                      <User size={16} /> {app.doctor.name}
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      <User size={16} className="text-green-600" /> {app.doctor.name}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {new Date(app.date).toDateString()} at {app.startTime}
-                    </div>
-                    <div className="mt-2">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        app.status === 'BOOKED' ? 'bg-blue-100 text-blue-800' :
-                        app.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {app.status}
+                    <div className="text-xs text-gray-600 mt-1 flex items-center gap-2">
+                      <span className="font-medium text-green-800 bg-green-100 px-2 py-0.5 rounded">
+                        {formatDisplayDate(app.date)}
                       </span>
+                      <span>at <strong>{app.startTime}</strong> {app.endTime ? `(${app.endTime})` : ''}</span>
                     </div>
                   </div>
                   
-                  {app.status === 'BOOKED' && (
-                    <button 
-                      onClick={() => handleCancel(app.id)}
-                      className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm bg-white border border-red-200 px-3 py-1 rounded"
-                    >
-                      <XCircle size={16} /> Cancel
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => handleCancel(app.id)}
+                    className="text-red-600 hover:text-red-800 flex items-center gap-1 text-xs bg-white border border-red-200 px-2.5 py-1.5 rounded transition shadow-sm"
+                  >
+                    <XCircle size={14} /> Cancel
+                  </button>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">You don't have any appointments.</p>
+            <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-200 mb-6">
+              <Clock className="mx-auto h-6 w-6 text-gray-400 mb-1" />
+              <p className="text-xs text-gray-500">You don't have any upcoming appointments scheduled.</p>
+            </div>
+          )}
+
+          {/* Past / Cancelled Appointments */}
+          {pastOrCancelledAppointments.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Past / Cancelled History</h3>
+              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                {pastOrCancelledAppointments.map(app => (
+                  <div key={app.id} className="border border-gray-200 rounded p-2.5 text-xs flex justify-between items-center text-gray-500 bg-white">
+                    <div>
+                      <span className="font-medium text-gray-700">{app.doctor.name}</span>
+                      <span className="mx-1.5">•</span>
+                      <span>{formatDisplayDate(app.date)} at {app.startTime}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                      app.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {app.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -260,7 +359,7 @@ const PatientDashboard = () => {
             to="/medical-records"
             className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
           >
-            View Complete History <ChevronRight size={16} />
+            View Full Medical History <ChevronRight size={16} />
           </Link>
         </div>
 
@@ -272,14 +371,16 @@ const PatientDashboard = () => {
                 to={`/medical-records/${rec.id}`}
                 className="block p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-sm transition bg-gray-50"
               >
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                  <Calendar size={12} /> {new Date(rec.recordDate).toLocaleDateString()}
-                  {rec.doctor && <span>• Dr. {rec.doctor.name}</span>}
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <span className="flex items-center gap-1">
+                    <Calendar size={12} /> {new Date(rec.recordDate).toLocaleDateString()}
+                  </span>
+                  {rec.doctor && <span className="font-medium text-gray-700">Dr. {rec.doctor.name}</span>}
                 </div>
                 <h4 className="font-semibold text-gray-900 text-base mb-1 truncate">{rec.diagnosis}</h4>
                 <p className="text-xs text-gray-600 line-clamp-2">{rec.symptoms}</p>
                 <span className="text-xs text-blue-600 font-medium inline-flex items-center gap-1 mt-2">
-                  View Consultation Details <ChevronRight size={12} />
+                  View Full Details <ChevronRight size={12} />
                 </span>
               </Link>
             ))}
@@ -287,7 +388,7 @@ const PatientDashboard = () => {
         ) : (
           <div className="text-center py-6 text-gray-500 text-sm">
             <Stethoscope className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-            No clinical records logged yet. Records authored during doctor consultations will appear here.
+            No medical records found on file.
           </div>
         )}
       </div>

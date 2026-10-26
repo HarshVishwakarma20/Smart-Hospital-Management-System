@@ -11,7 +11,9 @@ describe('Module 2: Appointment and Scheduling Integration Tests', () => {
   let doctorId: string;
   let doctor2Id: string;
 
-  const testDate = '2026-10-19'; // Future date for clean test isolation
+  const futureTestDate = new Date();
+  futureTestDate.setDate(futureTestDate.getDate() + 14);
+  const testDate = futureTestDate.toISOString().split('T')[0]; // Future date for clean test isolation
 
   beforeAll(async () => {
     // 1. Log in users
