@@ -1,15 +1,14 @@
+#testing
 cd Smart-Hospital-Management-System\backend
 npm test
 npm run build
 
-
 cd Smart-Hospital-Management-System\frontend
 npm run build
 
-
+#implementation
 cd Smart-Hospital-Management-System\backend
 npm run dev
-
 
 cd Smart-Hospital-Management-System\frontend
 npm run dev
